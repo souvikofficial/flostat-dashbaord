@@ -42,18 +42,17 @@ const FlostatDashboard = ({ components }) => {
   }, [org_id])
   return (
     <div>
-      {components === "dashboard" && <Dashboard />},
-      {components === "devices" && <Devices />},
-      {components === "users" && <Users />},
-      {components === "schedule" && <ScheduleList />},
-      {components === "logs" && <Logs />},
-      {components === "reports" && <Reports />},
-      {components === "support" && <Support />},
-      {components === "ocr" && <OCR />},
-      {components === "scada" && <SCADA />},
-      {components === "customer-support" && <CustomerService />},
-      {components === "setting" && <Settings />},
-
+      {components === "dashboard" && <Dashboard />}
+      {components === "devices" && <Devices />}
+      {components === "users" && <Users />}
+      {components === "schedule" && <ScheduleList />}
+      {components === "logs" && <Logs />}
+      {components === "reports" && <Reports />}
+      {components === "support" && <Support />}
+      {components === "ocr" && <OCR />}
+      {components === "scada" && <SCADA />}
+      {components === "customer-support" && <CustomerService />}
+      {components === "setting" && <Settings />}
     </div>
   );
 };

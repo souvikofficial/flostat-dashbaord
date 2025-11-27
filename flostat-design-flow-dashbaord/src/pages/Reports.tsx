@@ -26,6 +26,15 @@ import { apiService } from "@/lib/api";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { OrganizationSelector } from "@/components/OrganizationSelector";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Report {
   id: string;
@@ -71,6 +80,8 @@ export default function Reports() {
   const [selectedTank, setSelectedTank] = useState<string>("no-tanks");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterDeviceType, setFilterDeviceType] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const dummyEmails = [
     "admin@gmail.com", "hardware@gmail.com", "chopdeharshit@gmail.com",
@@ -415,6 +426,10 @@ export default function Reports() {
     return reports.filter(report => report.deviceType.toLowerCase() === filterDeviceType.toLowerCase());
   }, [reports, filterDeviceType]);
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentReports = filteredReports.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="space-y-6 animate-fadeIn">
       <h1 className="text-3xl font-bold tracking-tight text-soft text-center">Reports</h1>
@@ -500,52 +515,7 @@ export default function Reports() {
         <Button className="h-9 gap-2 bg-[hsl(var(--navy))] hover:bg-[hsl(var(--navy-hover))] text-white"><Download className="h-4 w-4" /> Download PDF</Button>
       </div>
 
-      <div className="rounded-lg border border-border/50 bg-card shadow-soft-lg animate-slideUp">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30 hover:bg-muted/30">
-              <TableHead className="font-semibold text-soft">DEVICE ID</TableHead>
-              <TableHead className="font-semibold text-soft">STATUS/LEVEL</TableHead>
-              <TableHead className="font-semibold text-soft">DEVICE TYPE</TableHead>
-              <TableHead className="font-semibold text-soft">LAST UPDATED</TableHead>
-              <TableHead className="font-semibold text-soft">UPDATED BY</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredReports.length > 0 ? (
-              filteredReports.map((report, index) => (
-                <TableRow key={index} className="hover:bg-muted/20 transition-smooth">
-                  <TableCell className="font-mono text-xs text-soft">{report.id}</TableCell>
-                  <TableCell className="space-x-1">
-                    {report.status && (
-                      <Badge
-                        variant="outline"
-                        className={report.status === "ON" ? "bg-success/15 text-success/90 border-success/25 shadow-soft-sm" : "bg-destructive/15 text-destructive/90 border-destructive/25 shadow-soft-sm"}
-                      >
-                        {report.status}
-                      </Badge>
-                    )}
-                    {report.level && (
-                      <Badge variant="outline" className="bg-[hsl(var(--aqua))]/15 text-[hsl(var(--aqua))] border-[hsl(var(--aqua))]/25 shadow-soft-sm">
-                        {report.level}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm text-soft">{report.deviceType}</TableCell>
-                  <TableCell className="text-sm text-soft-muted">{report.lastUpdated}</TableCell>
-                  <TableCell className="text-sm text-[hsl(var(--aqua))]">{report.updatedBy}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No reports found. Select a tank and date, then click Fetch Data.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+
 
 
       <h2 className="text-center text-sm font-semibold text-soft">Device Data Visualization</h2>
@@ -662,6 +632,104 @@ export default function Reports() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="rounded-lg border border-border/50 bg-card shadow-soft-lg animate-slideUp">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="font-semibold text-soft">DEVICE ID</TableHead>
+              <TableHead className="font-semibold text-soft">STATUS/LEVEL</TableHead>
+              <TableHead className="font-semibold text-soft">DEVICE TYPE</TableHead>
+              <TableHead className="font-semibold text-soft">LAST UPDATED</TableHead>
+              <TableHead className="font-semibold text-soft">UPDATED BY</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {currentReports.length > 0 ? (
+              currentReports.map((report, index) => (
+                <TableRow key={index} className="hover:bg-muted/20 transition-smooth">
+                  <TableCell className="font-mono text-xs text-soft">{report.id}</TableCell>
+                  <TableCell className="space-x-1">
+                    {report.status && (
+                      <Badge
+                        variant="outline"
+                        className={report.status === "ON" ? "bg-success/15 text-success/90 border-success/25 shadow-soft-sm" : "bg-destructive/15 text-destructive/90 border-destructive/25 shadow-soft-sm"}
+                      >
+                        {report.status}
+                      </Badge>
+                    )}
+                    {report.level && (
+                      <Badge variant="outline" className="bg-[hsl(var(--aqua))]/15 text-[hsl(var(--aqua))] border-[hsl(var(--aqua))]/25 shadow-soft-sm">
+                        {report.level}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm text-soft">{report.deviceType}</TableCell>
+                  <TableCell className="text-sm text-soft-muted">{report.lastUpdated}</TableCell>
+                  <TableCell className="text-sm text-[hsl(var(--aqua))]">{report.updatedBy}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                  No reports found. Select a tank and date, then click Fetch Data.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        <div className="py-4 border-t">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+
+              {Array.from({ length: Math.ceil(filteredReports.length / itemsPerPage) || 1 }).map((_, index) => {
+                const pageNumber = index + 1;
+                if (
+                  pageNumber === 1 ||
+                  pageNumber === (Math.ceil(filteredReports.length / itemsPerPage) || 1) ||
+                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                ) {
+                  return (
+                    <PaginationItem key={pageNumber}>
+                      <PaginationLink
+                        isActive={currentPage === pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        className="cursor-pointer"
+                      >
+                        {pageNumber}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                } else if (
+                  pageNumber === currentPage - 2 ||
+                  pageNumber === currentPage + 2
+                ) {
+                  return (
+                    <PaginationItem key={pageNumber}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  );
+                }
+                return null;
+              })}
+
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredReports.length / itemsPerPage) || 1))}
+                  className={currentPage === (Math.ceil(filteredReports.length / itemsPerPage) || 1) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      </div>
     </div>
   );
 }

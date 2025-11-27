@@ -2,7 +2,7 @@ import {
   Battery,
   Droplet,
   Gauge,
-  ThermometerSun,
+  Lightbulb,
   Waves,
   Wifi,
 } from "lucide-react";
@@ -15,6 +15,7 @@ import { DEVICE_TYPE, PUMP_STATUS, VALVE_STATUS } from "@/utils/constants";
 import { toast } from "sonner";
 import { updateDeviceStatus } from "@/lib/operations/dashboardApis";
 import { Switch } from "./ui/switch";
+import { cn } from "@/lib/utils";
 
 interface DeviceCardProps {
   device: any;
@@ -22,11 +23,11 @@ interface DeviceCardProps {
 
 export const DeviceCard = ({ device }: DeviceCardProps) => {
   const { device_name, device_type } = device;
-  
+
 
   const { blocksName } = useSelector((state: RootState) => state.org);
   const isOn =
-    (device_type === "pump" && device?.status === "ON") ||  (device_type === "valve" && device?.status === VALVE_STATUS.OPEN);
+    (device_type === "pump" && device?.status === "ON") || (device_type === "valve" && device?.status === VALVE_STATUS.OPEN);
   const { token } = useSelector((state: RootState) => state.auth);
   const nextActionLabel = device.device_type === "valve" ? (isOn ? "Close valve" : "Open valve") : (isOn ? "Turn power off" : "Turn power on");
   // status correction
@@ -34,8 +35,8 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
     ? device.hardware_status
     : "disconnected";
 
-  const handleDeviceUpdate = async (device, state,level = null) => {
-    console.log("State: ",state)
+  const handleDeviceUpdate = async (device, state, level = null) => {
+    console.log("State: ", state)
     // const newStatus = device.status === "ON" ? "OFF" : "ON";
     if (!device || !device.device_type || !device.device_id || !device.org_id) {
       toast.error("Missing params!");
@@ -88,15 +89,17 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
   const typeIcons = {
     pump: Droplet,
     valve: Gauge,
-    tank: ThermometerSun,
+    tank: Lightbulb,
     sump: Waves,
   } as const;
   const TypeIcon = typeIcons[device_type as keyof typeof typeIcons] ?? Gauge;
 
   // values
+  // Try to get percentage from status_percentage first, then fallback to status
+  const rawPercentage = device.status_percentage ?? device.status;
   const statusPercentage =
-    typeof device.status_percentage === "number"
-      ? device.status_percentage
+    rawPercentage !== undefined && rawPercentage !== null && !isNaN(Number(rawPercentage))
+      ? Number(rawPercentage)
       : null;
   const wifiStrength =
     typeof device.wifi_strength === "number" ? device.wifi_strength : null;
@@ -119,7 +122,14 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
       : null;
 
   return (
-    <Card className="rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
+    <Card
+      className={cn(
+        "rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer",
+        (device_type === "valve" || device_type === "pump") &&
+        derivedStatus === "disconnected" &&
+        "opacity-60 grayscale bg-muted/30 hover:shadow-none cursor-not-allowed"
+      )}
+    >
       <CardContent className="p-4 space-y-4">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -128,47 +138,36 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
               {blocksName[device.block_id] ?? "No block"}
             </p>
           </div>
-          <TypeIcon className="size-5 text-primary" />
+          <TypeIcon
+            className={cn(
+              "size-5",
+              device_type === "tank" && levelCategory === "low" && "text-[#C00000]",
+              device_type === "tank" && levelCategory === "normal" && "text-[#FFC107]",
+              device_type === "tank" && levelCategory === "high" && "text-[#00B4D8]",
+              (!levelCategory || device_type !== "tank") && "text-primary"
+            )}
+          />
         </div>
 
         <div className="flex items-center justify-between">
           <StatusDeviceBadge
             status={derivedStatus}
-            label={
-              levelCategory === "low"
-                ? "Low"
-                : levelCategory === "normal"
-                ? "Normal"
-                : levelCategory === "high"
-                ? "High"
-                : undefined
-            }
-            className={
-              levelCategory
-                ? levelCategory === "low"
-                  ? "bg-[#C00000] text-white"
-                  : levelCategory === "normal"
-                  ? "bg-[#FFC107] text-white"
-                  : "bg-[hsl(var(--aqua))] text-white"
-                : undefined
-            }
           />
 
           {(device_type === "tank" || device_type === "sump") && (
             <div className="">{`${device?.status}%`}</div>
           )}
-          {(device_type === "valve" || device_type==="pump") && (
+          {(device_type === "valve" || device_type === "pump") && (
             <div className="flex items-center justify-end gap-2  w-full py-2">
               {/* Status label */}
-              <span className="text-sm font-medium">
-                {device_type === "valve"
-                  &&( isOn
-                    ? VALVE_STATUS.OPEN
-                    : VALVE_STATUS.CLOSE)}
-                {device_type === "pump"
-                  &&( isOn
-                    ? PUMP_STATUS.ON
-                    : PUMP_STATUS.OFF)}
+              <span
+                className={`text-sm ${isOn ? "font-bold text-[#00B4D8]" : "text-[#C00000]"
+                  }`}
+              >
+                {device_type === "valve" &&
+                  (isOn ? VALVE_STATUS.OPEN : VALVE_STATUS.CLOSE)}
+                {device_type === "pump" &&
+                  (isOn ? PUMP_STATUS.ON : PUMP_STATUS.OFF)}
               </span>
 
               {/* UI Switch */}
@@ -179,35 +178,35 @@ export const DeviceCard = ({ device }: DeviceCardProps) => {
               /> */}
             </div>
           )}
-          
+
         </div>
 
         {(wifiStrength !== null ||
           batteryPercentage !== null ||
           device.hardware_status) && (
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            {device.hardware_status && (
-              <div className="flex items-center gap-1">
-                <Gauge className="size-4 text-primary" />
-                <span>HW</span>
-              </div>
-            )}
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              {device.hardware_status && (
+                <div className="flex items-center gap-1">
+                  <Gauge className="size-4 text-primary" />
+                  <span>HW</span>
+                </div>
+              )}
 
-            {wifiStrength !== null && (
-              <div className="flex items-center gap-1">
-                <Wifi className="size-4 text-primary" />
-                <span>{wifiStrength} dBm</span>
-              </div>
-            )}
+              {wifiStrength !== null && (
+                <div className="flex items-center gap-1">
+                  <Wifi className="size-4 text-primary" />
+                  <span>{wifiStrength} dBm</span>
+                </div>
+              )}
 
-            {batteryPercentage !== null && (
-              <div className="flex items-center gap-1">
-                <Battery className="size-4 text-primary" />
-                <span>{batteryPercentage}%</span>
-              </div>
-            )}
-          </div>
-        )}
+              {batteryPercentage !== null && (
+                <div className="flex items-center gap-1">
+                  <Battery className="size-4 text-primary" />
+                  <span>{batteryPercentage}%</span>
+                </div>
+              )}
+            </div>
+          )}
       </CardContent>
     </Card>
   );

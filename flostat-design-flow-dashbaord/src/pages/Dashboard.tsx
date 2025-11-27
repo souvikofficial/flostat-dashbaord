@@ -63,6 +63,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 import { Toggle } from "@/components/ui/toggle";
 import { Switch } from "@/components/ui/switch";
@@ -145,6 +154,14 @@ export default function Dashboard() {
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
   >({});
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentLogs = logs.slice(indexOfFirstItem, indexOfLastItem);
 
   // Fetch blocks on mount
   useEffect(() => {
@@ -436,8 +453,8 @@ export default function Dashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.length > 0 ? (
-                logs.map((log) => {
+              {currentLogs.length > 0 ? (
+                currentLogs.map((log) => {
                   const action =
                     log.device_type === "pump"
                       ? `Pump turned ${log.status}`
@@ -500,6 +517,62 @@ export default function Dashboard() {
               )}
             </TableBody>
           </Table>
+
+          {/* Pagination Controls */}
+          {logs.length > itemsPerPage && (
+            <div className="mt-4">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+
+                  {Array.from({ length: Math.ceil(logs.length / itemsPerPage) }).map((_, index) => {
+                    const pageNumber = index + 1;
+                    // Simple logic to show limited page numbers could be added here if needed
+                    // For now, showing all page numbers or a simple range
+                    if (
+                      pageNumber === 1 ||
+                      pageNumber === Math.ceil(logs.length / itemsPerPage) ||
+                      (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                    ) {
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            isActive={currentPage === pageNumber}
+                            onClick={() => setCurrentPage(pageNumber)}
+                            className="cursor-pointer"
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    } else if (
+                      pageNumber === currentPage - 2 ||
+                      pageNumber === currentPage + 2
+                    ) {
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(logs.length / itemsPerPage)))}
+                      className={currentPage === Math.ceil(logs.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

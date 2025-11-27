@@ -19,6 +19,15 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { setLogs } from "@/slice/orgSlice";
 import LogsExportDropdown from "@/components/logs/LogsExportDropdown";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const logLevelColors = {
   info: "bg-aqua/10 text-aqua border-aqua/20",
@@ -39,10 +48,14 @@ interface Log {
 export default function Logs() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   const dispatch = useDispatch();
-  const token = useSelector((state: RootState)=> state.auth.token);
-  const devicesObject = useSelector((state: RootState)=> state.device.devicesObject);
-  const {org_id,logs} = useSelector((state: RootState)=> state.org);
+  const token = useSelector((state: RootState) => state.auth.token);
+  const devicesObject = useSelector((state: RootState) => state.device.devicesObject);
+  const { org_id, logs } = useSelector((state: RootState) => state.org);
+
   useEffect(() => {
     fetchLogs();
   }, []);
@@ -53,11 +66,11 @@ export default function Logs() {
       const data = {
         org_id
       }
-      const result = await logsOrgTopics(data,token)
+      const result = await logsOrgTopics(data, token)
 
-      console.log("Result log: ",logs,result);
-      if(result){
-         dispatch(setLogs(result));
+      console.log("Result log: ", logs, result);
+      if (result) {
+        dispatch(setLogs(result));
       }
     } catch (error) {
       toast.error("Failed to fetch logs");
@@ -73,11 +86,15 @@ export default function Logs() {
     toast.info("Export logs functionality would be implemented here");
   };
 
-  const filteredLogs = logs.filter(log => 
+  const filteredLogs = logs.filter(log =>
     log.device_type?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
     log.updated_by?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
     log.device_id?.toLowerCase().includes(searchTerm?.toLowerCase())
   );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentLogs = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
 
   if (loading) {
     return (
@@ -96,7 +113,7 @@ export default function Logs() {
         </div>
         <Button variant="aqua" className="gap-2" onClick={handleExportLogs}>
           <Download className="h-4 w-4" />
-          <LogsExportDropdown data={logs}/>
+          <LogsExportDropdown data={logs} />
         </Button>
       </div>
 
@@ -107,7 +124,10 @@ export default function Logs() {
             placeholder="Search logs..."
             className="pl-9"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
           />
         </div>
         <Button variant="outline" className="gap-2">
@@ -133,7 +153,7 @@ export default function Logs() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLogs.map((log) => (
+            {currentLogs.map((log) => (
               <TableRow key={log.id} className="hover:bg-muted/30">
                 <TableCell>
                   <span className="rounded-md bg-secondary/20 px-2 py-1 text-xs font-medium">
@@ -149,13 +169,67 @@ export default function Logs() {
                     {log.status?.toUpperCase()}
                   </Badge>
                 </TableCell>
-                
+
                 <TableCell className="font-medium">{log.event || "Event"}</TableCell>
                 <TableCell className="text-muted-foreground">{log.updated_by}</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+
+        {/* Pagination Controls */}
+        {filteredLogs.length > itemsPerPage && (
+          <div className="py-4 border-t">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: Math.ceil(filteredLogs.length / itemsPerPage) }).map((_, index) => {
+                  const pageNumber = index + 1;
+                  if (
+                    pageNumber === 1 ||
+                    pageNumber === Math.ceil(filteredLogs.length / itemsPerPage) ||
+                    (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={pageNumber}>
+                        <PaginationLink
+                          isActive={currentPage === pageNumber}
+                          onClick={() => setCurrentPage(pageNumber)}
+                          className="cursor-pointer"
+                        >
+                          {pageNumber}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (
+                    pageNumber === currentPage - 2 ||
+                    pageNumber === currentPage + 2
+                  ) {
+                    return (
+                      <PaginationItem key={pageNumber}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredLogs.length / itemsPerPage)))}
+                    className={currentPage === Math.ceil(filteredLogs.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
     </div>
   );
